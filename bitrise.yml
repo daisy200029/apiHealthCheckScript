@@ -1,0 +1,43 @@
+format_version: '4'
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+project_type: android
+
+
+workflows:
+  test:
+    steps:
+    - script:
+        title:
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -e
+            set -x
+
+            hasFail=false
+            endpointUrls=(
+            "http://partnersnp.com/feed/fx/atp?channel=*&section=top-news&lang=english&curpg=%d&pp=%d&v=v1&fromtime=1551267146210" \
+            "http://appfeed.bhaskar.com/webfeed/apidata/firefox?pageSize=%d&channel_slno=%d&pageNumber=%d"
+            )
+
+            echo "Total number of APIs: ${#endpointUrls[@]}"
+
+            function checkHasFail() 
+            {
+            if [[ "${statusCode}" != 2* ]]
+            then
+            hasFail=true
+            fi
+            }
+
+            for i in "${!endpointUrls[@]}"; do
+                statusCode="$(curl -sL -w "%{http_code}\\n" "${endpointUrls[i]}" -o /dev/null)"
+                echo "EndpointUrl= ${endpointUrls[i]} status code = ${statusCode}"
+                checkHasFail
+            done
+
+            if [ "$((i+1))" == ${#endpointUrls[@]} ] && [ "$hasFail" = true ]
+            then
+            echo "Some Failed" && exit 1
+            fi
+            echo "All Passed" && exit 0
